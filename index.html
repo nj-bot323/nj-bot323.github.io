@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RIVALS Loadout Wheel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;500;700&display=swap">
+<style>
+/* Layout: the wheel is the hero on the left with the loadout card beside it; both stack into one column on narrow screens */
+:root {
+  --bg: #11162a;
+  --bg-2: #1a2140;
+  --bg-3: #252e56;
+  --line: #33406f;
+  --fg: #f4f6ff;
+  --muted: #a9b2d6;
+  --ink-dark: #11162a;
+  --ink-light: #ffffff;
+  --primary-a: #ff7a3d;   --primary-b: #d9531a;   --primary-c: #ffab80;
+  --secondary-a: #2fd0c8; --secondary-b: #139892; --secondary-c: #8be8e2;
+  --melee-a: #f05aa8;     --melee-b: #bf327c;     --melee-c: #f799c9;
+  --utility-a: #ffd23f;   --utility-b: #dca514;   --utility-c: #ffe590;
+  --slot: var(--primary-a);
+  --slot-b: var(--primary-b);
+  --display: "Bungee", "Arial Black", Impact, system-ui, sans-serif;
+  --body: "Rubik", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--body); font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+button { font-family: inherit; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--slot); outline-offset: 2px; }
+
+.app { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 28px; display: flex; flex-direction: column; gap: 18px; }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.eyebrow { display: block; font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 4px 0 0; font-family: var(--display); font-weight: 400; font-size: clamp(24px, 3.6vw, 34px); line-height: 1.05; text-wrap: balance; }
+h1 .hl { color: var(--slot); transition: color .3s ease; }
+.top-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ghost { font-size: 14px; font-weight: 500; line-height: 1; color: var(--fg); background: var(--bg-2); border: 1px solid var(--line); padding: 10px 14px; border-radius: 999px; cursor: pointer; }
+.ghost:hover { background: var(--bg-3); }
+.ghost[aria-pressed="false"] { color: var(--muted); }
+
+/* Mode picker */
+.modes { display: flex; flex-wrap: wrap; gap: 6px; padding: 5px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; }
+.mode { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 700; line-height: 1; color: var(--muted); background: transparent; border: 0; padding: 12px 14px; border-radius: 10px; cursor: pointer; white-space: nowrap; }
+.mode:hover:not(:disabled) { color: var(--fg); }
+.mode[aria-pressed="true"] { color: var(--fg); background: var(--bg-3); box-shadow: inset 0 -3px 0 var(--slot); }
+.mode:disabled { cursor: default; }
+.dot { width: 11px; height: 11px; border-radius: 50%; background: var(--c); flex: none; }
+.dot.all { background: conic-gradient(var(--primary-a) 0 25%, var(--secondary-a) 0 50%, var(--melee-a) 0 75%, var(--utility-a) 0); }
+
+/* Stage */
+.stage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (min-width: 760px) { .stage { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: center; } }
+.wheel-wrap { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.wheel-box { position: relative; width: var(--wheel, 420px); max-width: calc(100% - 28px); aspect-ratio: 1 / 1; margin-top: 26px; border-radius: 50%;
+  box-shadow: 0 0 0 10px var(--bg-2), 0 0 0 12px var(--line), 0 0 90px 8px color-mix(in srgb, var(--slot) 30%, transparent); transition: box-shadow .4s ease; }
+.wheel-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 50%; }
+#fx { pointer-events: none; z-index: 2; }
+.pointer { position: absolute; top: -30px; left: 50%; width: 38px; height: 46px; transform: translateX(-50%); transform-origin: 50% 28%; z-index: 4; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .45)); }
+.pointer svg { display: block; width: 100%; height: 100%; }
+.hub { position: absolute; left: 50%; top: 50%; z-index: 3; width: 24%; aspect-ratio: 1 / 1; transform: translate(-50%, -50%); border-radius: 50%;
+  border: 5px solid var(--fg); background: var(--bg); color: var(--fg); font-family: var(--display); font-size: clamp(13px, calc(var(--wheel, 420px) * .05), 24px); cursor: pointer; box-shadow: 0 4px 0 rgba(0, 0, 0, .35); transition: transform .12s ease; padding: 0; }
+.hub:hover:not(:disabled) { transform: translate(-50%, -50%) scale(1.06); }
+.hub:disabled { color: var(--muted); cursor: default; }
+
+.spin { min-width: min(100%, 300px); font-family: var(--display); font-size: clamp(19px, 2.4vw, 24px); line-height: 1.1; color: var(--ink-dark); background: var(--slot); border: 0; border-bottom: 6px solid var(--slot-b); border-radius: 16px; padding: 15px 30px 12px; cursor: pointer; transition: transform .08s ease, border-bottom-width .08s ease, background .3s ease; }
+.spin:active:not(:disabled) { transform: translateY(4px); border-bottom-width: 2px; }
+.spin:disabled { opacity: .55; cursor: default; }
+.opts { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 16px; font-size: 14px; color: var(--muted); }
+.switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.switch input { width: 18px; height: 18px; margin: 0; accent-color: var(--slot); }
+.link { background: none; border: 0; padding: 4px; color: var(--fg); font-size: 14px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.msg { margin: 0; min-height: 1.4em; font-size: 14px; color: var(--utility-a); text-align: center; max-width: 42ch; }
+.msg:empty { min-height: 0; }
+
+/* Result cards */
+.side { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.card { background: var(--bg-2); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+.card h2, .editor h2 { margin: 0 0 12px; font-family: var(--display); font-weight: 400; font-size: 18px; line-height: 1.2; }
+.slots { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.slot-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 11px 12px; background: var(--bg); border: 1px solid var(--line); border-left: 6px solid var(--c); border-radius: 12px; transition: box-shadow .2s ease, border-color .2s ease; }
+.slot-row.next { border-color: var(--c); box-shadow: 0 0 0 1px var(--c); }
+.slot-name { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--c); }
+.pick { display: block; min-width: 0; font-family: var(--display); font-size: clamp(16px, 2vw, 20px); line-height: 1.1; overflow-wrap: anywhere; }
+.pick.empty { color: var(--muted); }
+.respin { font-size: 13px; font-weight: 500; line-height: 1; color: var(--fg); background: var(--bg-3); border: 1px solid var(--line); border-radius: 999px; padding: 8px 11px; cursor: pointer; white-space: nowrap; }
+.respin:disabled { opacity: .35; cursor: default; }
+.hint { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+.slot-label { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--slot); }
+.big-pick { display: block; margin: 8px 0 0; font-family: var(--display); font-size: clamp(30px, 5vw, 48px); line-height: 1.05; overflow-wrap: anywhere; }
+.big-pick.empty { font-size: clamp(22px, 3vw, 28px); color: var(--muted); }
+.history { margin: 14px 0 0; font-size: 14px; color: var(--muted); }
+.pop { animation: pop .5s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes pop { from { transform: scale(.55); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* Editor */
+.editor { background: var(--bg-2); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.editor h2 { margin: 0; }
+.editor .lead { margin: 6px 0 0; font-size: 14px; color: var(--muted); max-width: 62ch; }
+.eslots { display: flex; flex-wrap: wrap; gap: 6px; }
+.eslot { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; line-height: 1; color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; cursor: pointer; }
+.eslot[aria-pressed="true"] { color: var(--ink-dark); background: var(--c); border-color: var(--c); }
+.eslot .n { font-weight: 500; font-variant-numeric: tabular-nums; opacity: .85; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-wrap { display: inline-flex; align-items: center; }
+.chip { font-size: 14px; font-weight: 500; line-height: 1; color: var(--ink-dark); background: var(--c); border: 2px solid var(--c); border-radius: 999px; padding: 9px 13px; cursor: pointer; }
+.chip[aria-pressed="false"] { color: var(--muted); background: transparent; border-color: var(--line); text-decoration: line-through; }
+.chip-wrap.custom .chip { border-radius: 999px 0 0 999px; }
+.chip-x { font-size: 16px; line-height: 1; color: var(--fg); background: var(--bg-3); border: 2px solid var(--line); border-left: 0; border-radius: 0 999px 999px 0; padding: 7px 10px 8px 8px; cursor: pointer; }
+.add { display: flex; flex-direction: column; gap: 6px; }
+.add label { font-size: 14px; color: var(--muted); }
+.add-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.add input { flex: 1 1 200px; min-width: 0; font: 500 15px var(--body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
+.add button { font-size: 14px; font-weight: 700; color: var(--ink-dark); background: var(--c); border: 0; border-radius: 10px; padding: 11px 18px; cursor: pointer; }
+.err { margin: 0; min-height: 1.2em; font-size: 13px; color: var(--melee-c); }
+.eactions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.confirm { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
+.danger { color: var(--melee-c); }
+
+.foot { margin: 4px auto 0; max-width: 72ch; font-size: 13px; color: var(--muted); text-align: center; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pop { animation: none; }
+  .hub, .spin, .wheel-box, h1 .hl { transition: none; }
+}
+/* standalone page basics */
+body { margin: 0; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <header class="top">
+    <div>
+      <span class="eyebrow">Fan-made spinner</span>
+      <h1>RIVALS <span class="hl">Loadout Wheel</span></h1>
+    </div>
+    <div class="top-actions">
+      <button type="button" id="soundBtn" class="ghost" aria-pressed="true">Sound on</button>
+      <button type="button" id="editBtn" class="ghost" aria-expanded="false" aria-controls="editor">Edit weapons</button>
+    </div>
+  </header>
+
+  <div class="modes" role="group" aria-label="What to spin">
+    <button type="button" class="mode" data-mode="loadout" aria-pressed="true"><span class="dot all"></span>Full loadout</button>
+    <button type="button" class="mode" data-mode="primary" aria-pressed="false" style="--c: var(--primary-a)"><span class="dot"></span>Primary</button>
+    <button type="button" class="mode" data-mode="secondary" aria-pressed="false" style="--c: var(--secondary-a)"><span class="dot"></span>Secondary</button>
+    <button type="button" class="mode" data-mode="melee" aria-pressed="false" style="--c: var(--melee-a)"><span class="dot"></span>Melee</button>
+    <button type="button" class="mode" data-mode="utility" aria-pressed="false" style="--c: var(--utility-a)"><span class="dot"></span>Utility</button>
+  </div>
+
+  <main class="stage">
+    <section class="wheel-wrap" id="wheelWrap" aria-label="Wheel">
+      <div class="wheel-box" id="wheelBox">
+        <div class="pointer" id="pointer" aria-hidden="true">
+          <svg viewBox="0 0 38 46"><path d="M19 45 L4 13 Q4 2 19 2 Q34 2 34 13 Z" fill="var(--fg)"/><circle cx="19" cy="13" r="5.5" fill="var(--slot)"/></svg>
+        </div>
+        <canvas id="wheel" role="img" aria-label="Weapon wheel"></canvas>
+        <canvas id="fx" aria-hidden="true"></canvas>
+        <button type="button" id="hub" class="hub" aria-label="Spin the wheel">SPIN</button>
+      </div>
+      <button type="button" id="spinBtn" class="spin">Spin Primary</button>
+      <div class="opts">
+        <label class="switch" for="noRepeat"><input type="checkbox" id="noRepeat"> No repeats (picked weapons leave the wheel)</label>
+        <button type="button" id="putBack" class="link" hidden>Put picked weapons back</button>
+      </div>
+      <p class="msg" id="msg" role="status"></p>
+    </section>
+
+    <aside class="side">
+      <div class="card" id="loadoutCard">
+        <h2>Your loadout</h2>
+        <ol class="slots">
+          <li class="slot-row" data-slot="primary" style="--c: var(--primary-a)"><span class="slot-name">Primary</span><span class="pick empty" id="pick-primary">?</span><button type="button" class="respin" data-slot="primary" aria-label="Re-spin Primary" disabled>Re-spin</button></li>
+          <li class="slot-row" data-slot="secondary" style="--c: var(--secondary-a)"><span class="slot-name">Secondary</span><span class="pick empty" id="pick-secondary">?</span><button type="button" class="respin" data-slot="secondary" aria-label="Re-spin Secondary" disabled>Re-spin</button></li>
+          <li class="slot-row" data-slot="melee" style="--c: var(--melee-a)"><span class="slot-name">Melee</span><span class="pick empty" id="pick-melee">?</span><button type="button" class="respin" data-slot="melee" aria-label="Re-spin Melee" disabled>Re-spin</button></li>
+          <li class="slot-row" data-slot="utility" style="--c: var(--utility-a)"><span class="slot-name">Utility</span><span class="pick empty" id="pick-utility">?</span><button type="button" class="respin" data-slot="utility" aria-label="Re-spin Utility" disabled>Re-spin</button></li>
+        </ol>
+        <p class="hint" id="loadoutHint">Spin one slot at a time, starting with Primary.</p>
+      </div>
+      <div class="card" id="singleCard" hidden>
+        <span class="slot-label" id="singleSlot">Primary</span>
+        <span class="big-pick empty" id="singlePick">Tap Spin</span>
+        <p class="history" id="history" hidden></p>
+      </div>
+    </aside>
+  </main>
+
+  <section class="editor" id="editor" hidden aria-labelledby="editorTitle">
+    <div>
+      <h2 id="editorTitle">Edit weapons</h2>
+      <p class="lead">Tap a weapon to take it off the wheel. Turn off any you haven't unlocked yet, so the wheel never picks one you can't use.</p>
+    </div>
+    <div class="eslots" role="group" aria-label="Which wheel to edit">
+      <button type="button" class="eslot" data-slot="primary" aria-pressed="true" style="--c: var(--primary-a)">Primary <span class="n"></span></button>
+      <button type="button" class="eslot" data-slot="secondary" aria-pressed="false" style="--c: var(--secondary-a)">Secondary <span class="n"></span></button>
+      <button type="button" class="eslot" data-slot="melee" aria-pressed="false" style="--c: var(--melee-a)">Melee <span class="n"></span></button>
+      <button type="button" class="eslot" data-slot="utility" aria-pressed="false" style="--c: var(--utility-a)">Utility <span class="n"></span></button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <form class="add" id="addForm" autocomplete="off">
+      <label for="addInput">Add a new weapon to the <span id="addSlotName">Primary</span> wheel</label>
+      <div class="add-row">
+        <input type="text" id="addInput" maxlength="24" placeholder="Weapon name">
+        <button type="submit" id="addBtn">Add</button>
+      </div>
+      <p class="err" id="addErr" role="status"></p>
+    </form>
+    <div class="eactions">
+      <button type="button" id="allOn" class="ghost">Turn all on</button>
+      <button type="button" id="resetBtn" class="ghost danger">Start over</button>
+      <span class="confirm" id="resetConfirm" hidden>Go back to your starting weapons?
+        <button type="button" id="resetYes" class="ghost danger">Yes, reset</button>
+        <button type="button" id="resetNo" class="ghost">Cancel</button>
+      </span>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p>Weapon list as of September 2026 (Update 22, which added the Wildcat). Weapons that only appear in special modes, like the Scepter, are left out. If RIVALS adds a weapon, add it under Edit weapons. Fan-made, not affiliated with RIVALS or Roblox.</p>
+  </footer>
+  <div class="sr-only" aria-live="polite" id="live"></div>
+</div>
+
+<script>
+(() => {
+  const SLOTS = ['primary', 'secondary', 'melee', 'utility'];
+  const LABEL = { primary: 'Primary', secondary: 'Secondary', melee: 'Melee', utility: 'Utility' };
+  const DEFAULTS = {
+    primary: ['Assault Rifle', 'Bow', 'Burst Rifle', 'Crossbow', 'Distortion', 'Energy Rifle', 'Flamethrower', 'Grenade Launcher', 'Gunblade', 'Minigun', 'Paintball Gun', 'Permafrost', 'RPG', 'Shotgun', 'Sniper', 'Wildcat'],
+    secondary: ['Daggers', 'Energy Pistols', 'Exogun', 'Flare Gun', 'Handgun', 'Revolver', 'Shorty', 'Slingshot', 'Spray', 'Uzi', 'Warper'],
+    melee: ['Battle Axe', 'Chainsaw', 'Fists', 'Katana', 'Knife', 'Maul', 'Riot Shield', 'Scythe', 'Spear', 'Trowel'],
+    utility: ['Flashbang', 'Freeze Ray', 'Grappler', 'Grenade', 'Jump Pad', 'Medkit', 'Molotov', 'Satchel', 'Smoke Grenade', 'Subspace Tripmine', 'War Horn', 'Warpstone']
+  };
+  // Weapons the owner hasn't unlocked yet start switched off
+  const START_OFF = {
+    primary: ['Distortion', 'Flamethrower', 'Grenade Launcher', 'Minigun', 'Paintball Gun', 'Permafrost'],
+    secondary: [], melee: [], utility: []
+  };
+  const STORE = 'rivals-loadout-wheel-v2';
+  const TAU = Math.PI * 2;
+  const POINTER = -Math.PI / 2;
+  const FONT = '"Rubik", system-ui, -apple-system, "Segoe UI", sans-serif';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const mod = (x, m) => ((x % m) + m) % m;
+  const root = document.documentElement;
+  const css = getComputedStyle(root);
+  const tok = (name) => css.getPropertyValue(name).trim();
+
+  // ---------- saved settings (per viewer, best effort) ----------
+  function load() { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch (e) { return {}; } }
+  function lists(o) {
+    const out = {};
+    SLOTS.forEach((s) => { out[s] = Array.isArray(o && o[s]) ? o[s].filter((x) => typeof x === 'string' && x.trim()).slice(0, 80) : []; });
+    return out;
+  }
+  const saved = load();
+  const state = {
+    mode: saved.mode === 'loadout' || SLOTS.includes(saved.mode) ? saved.mode : 'loadout',
+    disabled: lists(saved.disabled || START_OFF),
+    custom: lists(saved.custom),
+    muted: !!saved.muted,
+    noRepeat: !!saved.noRepeat,
+    used: lists(null),
+    loadout: { primary: null, secondary: null, melee: null, utility: null },
+    lastSingle: null,
+    history: [],
+    editSlot: 'primary',
+    wheelSlot: 'primary',
+    rot: 0,
+    shown: null,      // the exact list drawn while spinning or just after landing
+    winIndex: null,
+    spinning: false
+  };
+  function save() {
+    try {
+      localStorage.setItem(STORE, JSON.stringify({ mode: state.mode, disabled: state.disabled, custom: state.custom, muted: state.muted, noRepeat: state.noRepeat }));
+    } catch (e) { /* storage unavailable: settings last for this visit only */ }
+  }
+
+  // ---------- weapons ----------
+  const allWeapons = (s) => [...DEFAULTS[s], ...state.custom[s]].sort((a, b) => a.localeCompare(b));
+  const enabled = (s) => allWeapons(s).filter((w) => !state.disabled[s].includes(w));
+  const wheelItems = (s) => enabled(s).filter((w) => !(state.noRepeat && state.used[s].includes(w)));
+
+  // ---------- randomness ----------
+  function rand() { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] / 4294967296; }
+  const randInt = (n) => Math.floor(rand() * n);
+  const indexAt = (rot, n) => Math.floor(mod(POINTER - rot, TAU) / (TAU / n)) % n;
+
+  // ---------- colours ----------
+  const tones = (s) => [tok(`--${s}-a`), tok(`--${s}-b`), tok(`--${s}-c`)];
+  function lum(hex) {
+    const h = hex.replace('#', '');
+    const v = [0, 2, 4].map((i) => parseInt(h.substr(i, 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+  }
+  function contrast(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  function inkFor(bg) { const d = tok('--ink-dark'), l = tok('--ink-light'); return contrast(bg, d) >= contrast(bg, l) ? d : l; }
+
+  // ---------- canvas ----------
+  const box = $('#wheelBox'), cv = $('#wheel'), fx = $('#fx');
+  const ctx = cv.getContext('2d'), fctx = fx.getContext('2d');
+  let size = 420;
+
+  function layout() {
+    const wrapW = $('#wheelWrap').clientWidth - 28;
+    const byHeight = Math.max(260, window.innerHeight - 260);
+    size = Math.round(Math.max(220, Math.min(wrapW, 540, byHeight)));
+    root.style.setProperty('--wheel', size + 'px');
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    [cv, fx].forEach((c) => { c.width = Math.round(size * dpr); c.height = Math.round(size * dpr); });
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  function wedge(c, cx, cy, r, a0, a1) { c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, r, a0, a1); c.closePath(); }
+
+  function draw() {
+    const items = state.shown || wheelItems(state.wheelSlot);
+    const r = size / 2, cx = r, cy = r, rim = r - 3;
+    const bg = tok('--bg'), fg = tok('--fg');
+    ctx.clearRect(0, 0, size, size);
+    if (!items.length) {
+      ctx.fillStyle = tok('--bg-3');
+      ctx.beginPath(); ctx.arc(cx, cy, rim, 0, TAU); ctx.fill();
+      ctx.fillStyle = tok('--muted');
+      ctx.font = `500 ${Math.max(12, Math.round(size * 0.04))}px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('No weapons on this wheel', cx, cy - size * 0.2);
+      return;
+    }
+    const [ta, tb, tc] = tones(state.wheelSlot);
+    const n = items.length, seg = TAU / n;
+    const base = Math.max(11, Math.min(24, size * (n > 14 ? 0.032 : n > 10 ? 0.038 : 0.046)));
+    const maxW = r * 0.6;
+    for (let i = 0; i < n; i++) {
+      const a0 = state.rot + i * seg;
+      const fill = n > 1 && n % 2 === 1 && i === n - 1 ? tc : (i % 2 === 0 ? ta : tb);
+      wedge(ctx, cx, cy, rim, a0, a0 + seg);
+      ctx.fillStyle = fill; ctx.fill();
+      if (n > 1) { ctx.lineWidth = 2; ctx.strokeStyle = bg; ctx.stroke(); }
+      // labels on the left half are flipped so they never read upside down
+      const mid = a0 + seg / 2, left = Math.cos(mid) < -0.0001;
+      ctx.save();
+      ctx.translate(cx, cy); ctx.rotate(left ? mid + Math.PI : mid);
+      ctx.fillStyle = inkFor(fill); ctx.textAlign = left ? 'left' : 'right'; ctx.textBaseline = 'middle';
+      let fp = base;
+      ctx.font = `700 ${fp}px ${FONT}`;
+      while (ctx.measureText(items[i]).width > maxW && fp > 9) { fp -= 1; ctx.font = `700 ${fp}px ${FONT}`; }
+      ctx.fillText(items[i], left ? -(r - 18) : r - 18, 0);
+      ctx.restore();
+    }
+    if (state.winIndex !== null && state.shown) {
+      ctx.save();
+      ctx.globalAlpha = 0.55; ctx.fillStyle = bg;
+      for (let i = 0; i < n; i++) { if (i === state.winIndex) continue; wedge(ctx, cx, cy, rim, state.rot + i * seg, state.rot + (i + 1) * seg); ctx.fill(); }
+      ctx.globalAlpha = 1;
+      wedge(ctx, cx, cy, rim - 2, state.rot + state.winIndex * seg, state.rot + (state.winIndex + 1) * seg);
+      ctx.lineWidth = 5; ctx.strokeStyle = fg; ctx.stroke();
+      ctx.restore();
+    }
+    ctx.beginPath(); ctx.arc(cx, cy, r - 2, 0, TAU); ctx.lineWidth = 4; ctx.strokeStyle = fg; ctx.stroke();
+    if (n > 1) {
+      ctx.fillStyle = fg;
+      const pr = Math.max(2.5, size * 0.008);
+      for (let i = 0; i < n; i++) {
+        const a = state.rot + i * seg;
+        ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (r - 10), cy + Math.sin(a) * (r - 10), pr, 0, TAU); ctx.fill();
+      }
+    }
+  }
+
+  // ---------- sound ----------
+  let ac = null;
+  function audioInit() {
+    if (state.muted) return;
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === 'suspended') ac.resume();
+    } catch (e) { ac = null; }
+  }
+  function blip(freq, dur, type, vol, when) {
+    if (!ac || state.muted) return;
+    const t = ac.currentTime + (when || 0);
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  const tick = () => blip(1500, 0.03, 'triangle', 0.08);
+  const ding = () => { blip(660, 0.2, 'triangle', 0.2); blip(990, 0.35, 'triangle', 0.2, 0.12); };
+
+  // ---------- effects ----------
+  const pointerEl = $('#pointer');
+  function flick() {
+    if (reduced || !pointerEl.animate) return;
+    pointerEl.animate([{ transform: 'translateX(-50%) rotate(-20deg)' }, { transform: 'translateX(-50%) rotate(0deg)' }], { duration: 120, easing: 'ease-out' });
+  }
+  function confetti(slot) {
+    if (reduced) return;
+    const cols = tones(slot).concat([tok('--fg')]);
+    const parts = Array.from({ length: 90 }, () => {
+      const a = rand() * TAU, sp = size * (0.3 + rand() * 0.9);
+      return { x: size / 2, y: size / 2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - size * 0.35, w: 5 + rand() * 7, h: 3 + rand() * 4, rot: rand() * TAU, vr: (rand() - 0.5) * 12, c: cols[randInt(cols.length)] };
+    });
+    const t0 = performance.now();
+    let prev = t0;
+    function step(now) {
+      const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+      const life = (now - t0) / 1300;
+      fctx.clearRect(0, 0, size, size);
+      if (life >= 1) return;
+      parts.forEach((p) => {
+        p.vy += size * 1.5 * dt; p.vx *= 0.985;
+        p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+        fctx.save(); fctx.globalAlpha = 1 - life; fctx.translate(p.x, p.y); fctx.rotate(p.rot);
+        fctx.fillStyle = p.c; fctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); fctx.restore();
+      });
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // ---------- wheel slot ----------
+  function setWheelSlot(slot) {
+    state.wheelSlot = slot;
+    state.shown = null; state.winIndex = null;
+    root.style.setProperty('--slot', `var(--${slot}-a)`);
+    root.style.setProperty('--slot-b', `var(--${slot}-b)`);
+    draw();
+  }
+
+  // ---------- spinning ----------
+  const say = (t) => { $('#msg').textContent = t; };
+  const announce = (t) => { $('#live').textContent = t; };
+
+  function spin(slot) {
+    return new Promise((resolve) => {
+      if (state.spinning) return resolve(null);
+      setWheelSlot(slot);
+      const items = wheelItems(slot);
+      if (!items.length) {
+        say(state.noRepeat && state.used[slot].length
+          ? `Every ${LABEL[slot]} weapon has been picked. Tap "Put picked weapons back" to keep going.`
+          : `The ${LABEL[slot]} wheel is empty. Turn some weapons on under Edit weapons.`);
+        return resolve(null);
+      }
+      say('');
+      audioInit();
+      state.spinning = true; state.shown = items; state.winIndex = null;
+      renderControls();
+      const n = items.length, seg = TAU / n;
+      const target = randInt(n);
+      const offset = seg * (0.15 + 0.7 * rand());
+      const turns = reduced ? 1 : 5 + randInt(3);
+      let end = POINTER - (target * seg + offset);
+      while (end < state.rot + turns * TAU) end += TAU;
+      const start = state.rot, dist = end - start;
+      const dur = reduced ? 1100 : 4300 + rand() * 900;
+      const t0 = performance.now();
+      let last = indexAt(start, n);
+      function frame(now) {
+        const t = Math.min(1, (now - t0) / dur);
+        state.rot = start + dist * (1 - Math.pow(1 - t, 4));
+        draw();
+        const idx = indexAt(state.rot, n);
+        if (idx !== last) { last = idx; tick(); flick(); }
+        if (t < 1) { requestAnimationFrame(frame); return; }
+        state.rot = mod(state.rot, TAU);
+        const win = indexAt(state.rot, n);
+        const pick = items[win];
+        state.winIndex = win;
+        state.spinning = false;
+        if (state.noRepeat) state.used[slot].push(pick);
+        draw();
+        ding(); confetti(slot);
+        announce(`${LABEL[slot]}: ${pick}`);
+        resolve(pick);
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  // ---------- rendering ----------
+  const nextEmpty = () => SLOTS.find((s) => !state.loadout[s]) || null;
+  function popIn(el) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+
+  function renderControls() {
+    const label = state.mode === 'loadout' ? (nextEmpty() ? `Spin ${LABEL[nextEmpty()]}` : 'New loadout') : `Spin ${LABEL[state.mode]}`;
+    const spinBtn = $('#spinBtn');
+    spinBtn.textContent = state.spinning ? 'Spinning...' : label;
+    spinBtn.disabled = state.spinning;
+    $('#hub').disabled = state.spinning;
+    $$('.mode').forEach((b) => { b.disabled = state.spinning; });
+    $$('.respin').forEach((b) => { b.disabled = state.spinning || !state.loadout[b.dataset.slot]; });
+    $('#putBack').hidden = !(state.noRepeat && SLOTS.some((s) => state.used[s].length));
+  }
+
+  function renderLoadout(justPicked) {
+    const next = nextEmpty();
+    SLOTS.forEach((s) => {
+      const el = $(`#pick-${s}`), v = state.loadout[s];
+      el.textContent = v || '?';
+      el.classList.toggle('empty', !v);
+      if (justPicked === s) popIn(el);
+      el.closest('.slot-row').classList.toggle('next', next === s);
+    });
+    $('#loadoutHint').textContent = !next
+      ? 'Loadout ready. Equip it in RIVALS and go play!'
+      : next === 'primary' ? 'Spin one slot at a time, starting with Primary.' : `Next up: ${LABEL[next]}.`;
+  }
+
+  function renderSingle(justPicked) {
+    $('#singleSlot').textContent = LABEL[state.mode] || '';
+    const el = $('#singlePick');
+    el.textContent = state.lastSingle || 'Tap Spin';
+    el.classList.toggle('empty', !state.lastSingle);
+    if (justPicked) popIn(el);
+    const h = $('#history');
+    h.textContent = state.history.length ? 'Before: ' + state.history.join(', ') : '';
+    h.hidden = !state.history.length;
+  }
+
+  function renderEditor() {
+    const s = state.editSlot;
+    $$('.eslot').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.slot === s));
+      b.querySelector('.n').textContent = enabled(b.dataset.slot).length;
+    });
+    const chips = $('#chips');
+    chips.textContent = '';
+    chips.style.setProperty('--c', `var(--${s}-a)`);
+    $('#addForm').style.setProperty('--c', `var(--${s}-a)`);
+    allWeapons(s).forEach((w) => {
+      const wrap = document.createElement('span');
+      const custom = state.custom[s].includes(w);
+      wrap.className = 'chip-wrap' + (custom ? ' custom' : '');
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.textContent = w;
+      b.setAttribute('aria-pressed', String(!state.disabled[s].includes(w)));
+      b.addEventListener('click', () => toggleWeapon(s, w));
+      wrap.appendChild(b);
+      if (custom) {
+        const x = document.createElement('button');
+        x.type = 'button'; x.className = 'chip-x'; x.textContent = '×';
+        x.setAttribute('aria-label', `Remove ${w}`);
+        x.addEventListener('click', () => removeCustom(s, w));
+        wrap.appendChild(x);
+      }
+      chips.appendChild(wrap);
+    });
+    $('#addSlotName').textContent = LABEL[s];
+  }
+
+  function renderAll() {
+    $$('.mode').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
+    $('#loadoutCard').hidden = state.mode !== 'loadout';
+    $('#singleCard').hidden = state.mode === 'loadout';
+    $('#soundBtn').textContent = state.muted ? 'Sound off' : 'Sound on';
+    $('#soundBtn').setAttribute('aria-pressed', String(!state.muted));
+    $('#noRepeat').checked = state.noRepeat;
+    renderControls(); renderLoadout(); renderSingle(); renderEditor();
+  }
+
+  // ---------- actions ----------
+  async function onSpin() {
+    if (state.spinning) return;
+    if (state.mode === 'loadout') {
+      const next = nextEmpty();
+      if (!next) {
+        SLOTS.forEach((s) => { state.loadout[s] = null; });
+        setWheelSlot('primary');
+        renderLoadout(); renderControls();
+        return;
+      }
+      const pick = await spin(next);
+      if (pick) { state.loadout[next] = pick; renderLoadout(next); }
+    } else {
+      const slot = state.mode;
+      const pick = await spin(slot);
+      if (pick) {
+        if (state.lastSingle) state.history = [state.lastSingle, ...state.history].slice(0, 5);
+        state.lastSingle = pick;
+        renderSingle(true);
+      }
+    }
+    renderControls();
+  }
+
+  async function onRespin(slot) {
+    if (state.spinning || !state.loadout[slot]) return;
+    const pick = await spin(slot);
+    if (pick) { state.loadout[slot] = pick; renderLoadout(slot); }
+    renderControls();
+  }
+
+  function setMode(m) {
+    if (state.spinning) return;
+    state.mode = m; save();
+    state.lastSingle = null; state.history = [];
+    if (m !== 'loadout') state.editSlot = m;
+    setWheelSlot(m === 'loadout' ? (nextEmpty() || 'primary') : m);
+    say('');
+    renderAll();
+  }
+
+  function afterEdit(s) {
+    save();
+    if (s === state.wheelSlot && !state.spinning) { state.shown = null; state.winIndex = null; draw(); }
+    renderEditor();
+  }
+  function toggleWeapon(s, w) {
+    const d = state.disabled[s], i = d.indexOf(w);
+    if (i >= 0) d.splice(i, 1); else d.push(w);
+    afterEdit(s);
+  }
+  function removeCustom(s, w) {
+    state.custom[s] = state.custom[s].filter((x) => x !== w);
+    state.disabled[s] = state.disabled[s].filter((x) => x !== w);
+    state.used[s] = state.used[s].filter((x) => x !== w);
+    afterEdit(s);
+  }
+
+  // ---------- wiring ----------
+  $('#spinBtn').addEventListener('click', onSpin);
+  $('#hub').addEventListener('click', onSpin);
+  $$('.respin').forEach((b) => b.addEventListener('click', () => onRespin(b.dataset.slot)));
+  $$('.mode').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+  $('#soundBtn').addEventListener('click', () => {
+    state.muted = !state.muted; save();
+    if (!state.muted) audioInit();
+    renderAll();
+  });
+  $('#editBtn').addEventListener('click', () => {
+    const ed = $('#editor'), open = ed.hidden;
+    ed.hidden = !open;
+    $('#editBtn').setAttribute('aria-expanded', String(open));
+    $('#editBtn').textContent = open ? 'Close editor' : 'Edit weapons';
+    if (open) ed.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+  });
+  $$('.eslot').forEach((b) => b.addEventListener('click', () => { state.editSlot = b.dataset.slot; $('#addErr').textContent = ''; renderEditor(); }));
+  $('#addForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const s = state.editSlot, input = $('#addInput'), err = $('#addErr');
+    const v = input.value.trim().replace(/\s+/g, ' ').slice(0, 24);
+    if (!v) { err.textContent = 'Type a weapon name first.'; return; }
+    if (allWeapons(s).some((w) => w.toLowerCase() === v.toLowerCase())) { err.textContent = `${v} is already on the ${LABEL[s]} wheel.`; return; }
+    state.custom[s].push(v);
+    input.value = ''; err.textContent = `Added ${v}.`;
+    afterEdit(s);
+  });
+  $('#allOn').addEventListener('click', () => { state.disabled[state.editSlot] = []; afterEdit(state.editSlot); });
+  $('#resetBtn').addEventListener('click', () => { $('#resetConfirm').hidden = false; $('#resetBtn').hidden = true; });
+  $('#resetNo').addEventListener('click', () => { $('#resetConfirm').hidden = true; $('#resetBtn').hidden = false; });
+  $('#resetYes').addEventListener('click', () => {
+    state.disabled = lists(START_OFF); state.custom = lists(null); state.used = lists(null);
+    $('#resetConfirm').hidden = true; $('#resetBtn').hidden = false;
+    $('#addErr').textContent = 'All wheels are back to your starting weapons.';
+    afterEdit(state.wheelSlot);
+    renderControls();
+  });
+  $('#noRepeat').addEventListener('change', (e) => {
+    state.noRepeat = e.target.checked;
+    if (!state.noRepeat) state.used = lists(null);
+    save();
+    if (!state.spinning) { state.shown = null; state.winIndex = null; draw(); }
+    renderControls();
+  });
+  $('#putBack').addEventListener('click', () => {
+    state.used = lists(null);
+    if (!state.spinning) { state.shown = null; state.winIndex = null; draw(); }
+    say('');
+    renderControls();
+  });
+
+  let rz = 0;
+  window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(layout); });
+
+  // ---------- start ----------
+  setWheelSlot(state.mode === 'loadout' ? 'primary' : state.mode);
+  if (state.mode !== 'loadout') state.editSlot = state.mode;
+  layout();
+  renderAll();
+  if (document.fonts) {
+    document.fonts.load(`700 16px ${FONT}`).then(draw, () => {});
+    document.fonts.ready.then(draw, () => {});
+  }
+})();
+</script>
+
+</body>
+</html>
